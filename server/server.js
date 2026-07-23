@@ -11,9 +11,8 @@ const port = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openaiApiKey = process.env.OPENAI_API_KEY;
+const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 
 const SYSTEM_PROMPT = `
 You are "AI Shumani", an AI recruiter chatbot for Shumani Marvellous Raludzingana's portfolio website.
@@ -36,18 +35,45 @@ Rules for AI Shumani:
 5. Encourage recruiters to download his CV or use the Contact button.
 `;
 
+const buildFallbackReply = (messages) => {
+  const latestUserMessage = [...messages].reverse().find(message => message.role === 'user')?.content?.toLowerCase() || '';
+
+  if (latestUserMessage.includes('skill') || latestUserMessage.includes('tech') || latestUserMessage.includes('language')) {
+    return 'Shumani is strong in Python, Java, C#, SQL, JavaScript, HTML5, CSS3, Git/GitHub, and practical software development. He also works well with OOP, data structures, algorithms, system design, testing, and database systems.';
+  }
+
+  if (latestUserMessage.includes('project') || latestUserMessage.includes('portfolio')) {
+    return 'Shumani has built a portfolio website, a CV generator, a weather app, a currency converter, and a romantic interactive website, plus a GitHub project focused on option-pricing techniques. He enjoys building practical and user-focused web applications.';
+  }
+
+  if (latestUserMessage.includes('experience') || latestUserMessage.includes('intern')) {
+    return 'Shumani completed a Software Developer Intern role at SISOL Connex, where he worked on Python scripts, automation tools, full-stack development, debugging, testing, and performance improvements. He also completed an AI Software Developer Learnership focused on real-world AI and software development work.';
+  }
+
+  if (latestUserMessage.includes('education') || latestUserMessage.includes('study') || latestUserMessage.includes('degree')) {
+    return 'Shumani holds a Bachelor of Science in Computer Science from the University of the Western Cape, with coursework in data structures, algorithms, software development, AI, machine learning, networking, and databases.';
+  }
+
+  return 'Hi, I’m AI Shumani. Shumani is a Software Developer and Computer Science graduate with a strong interest in AI, backend development, and building practical solutions. He is especially interested in clean, scalable, and business-focused technology. If you would like, I can tell you more about his skills, experience, or projects.';
+};
+
 app.post('/api/chat', async (req, res) => {
+  const requestMessages = Array.isArray(req.body?.messages) ? req.body.messages : null;
+
   try {
-    const { messages } = req.body;
-    
-    if (!messages || !Array.isArray(messages)) {
+    if (!requestMessages) {
       return res.status(400).json({ error: 'Messages array is required' });
+    }
+
+    if (!openai) {
+      const fallbackReply = buildFallbackReply(requestMessages);
+      return res.json({ reply: fallbackReply });
     }
 
     // Format messages for OpenAI
     const apiMessages = [
       { role: 'system', content: SYSTEM_PROMPT },
-      ...messages.map(m => ({ role: m.role, content: m.content }))
+      ...requestMessages.map(m => ({ role: m.role, content: m.content }))
     ];
 
     const completion = await openai.chat.completions.create({
@@ -62,10 +88,16 @@ app.post('/api/chat', async (req, res) => {
 
   } catch (error) {
     console.error('OpenAI Error:', error);
+
+    if (error?.status === 429 || error?.code === 'insufficient_quota') {
+      const fallbackReply = buildFallbackReply(requestMessages);
+      return res.json({ reply: fallbackReply });
+    }
+
     res.status(500).json({ error: 'Failed to generate response' });
   }
 });
 
 app.listen(port, () => {
-  console.log(\`Server running on port \${port}\`);
+  console.log(`Server running on port ${port}`);
 });

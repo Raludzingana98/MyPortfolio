@@ -3,16 +3,23 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "homepage": "https://Raludzingana98.github.io/MyPortfolio",
   "scripts": {
+    "start": "node server/server.js",
     "dev": "vite",
     "build": "vite build",
+    "predeploy": "npm run build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.344.0",
+    "openai": "^6.37.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
